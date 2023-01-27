@@ -1,90 +1,91 @@
-//librerie
+//Librerie
 #include <Arduino.h>
 #include <binary.h>
 #include <SPI.h>
 #include <Ethernet.h>
 
+//indirizzo MAC scheda di rete arduino
 byte mac[] = {0x90, 0xA2, 0xDA, 0x0E, 0xD4, 0xB1};
+//indirizzo ip arduino
 byte ip[] = {192, 168, 1, 75};
 
+//Oggetti
 EthernetServer server(1032);
 
-unsigned long delaytime = 500; //tempo di delay
-
-int ledDiStato = LED_BUILTIN; //se il led è acceso l'allarme sarà attivo se il led è spento l'allarme sarà disattivato
-int buzzer = 2; //pin su cui è collegato il buzzer
-int laser = 6; //pin su cui è collegato il laser
+//Variabili
+unsigned long delaytime = 1000;
+int buzzer = 2;
+int laser = 6;
 int soglia = 960; //va cambiato in base al fotoresistore
-int stato = 1; //1 acceso 0 spento
+int stato = 1 //1-acceso 0-spento                                                                                                                                      ; //1 acceso 0 spento
 
-//funzione che attiva l'allarme per due volte ogni mezzo secondo
-void allarme(){
-  for(int i = 0; i<10; i++){
-    digitalWrite(buzzer, HIGH);
-    delay(delaytime);
-    digitalWrite(buzzer, LOW);
-    delay(delaytime);
+//fa suonare l'allarme(buzzer) - int A indica lo stato dell'allarme
+void allarme(int A){
+  int n = 1; //numero di volte che l'arduino deve suonare
+  if(A == 1){
+    for(int i = 0; i<n; i++){
+      digitalWrite(buzzer, HIGH);
+      delay(delaytime);
+      digitalWrite(buzzer, LOW);
+      delay(delaytime);
+    }
   }
 }
 
 void setup() {
+  //setup ethernet
   Ethernet.begin(mac, ip);
-  //setup porta seriale per le stampe a schermo
+  //setup porta seriale per debug
   Serial.begin(9600);
-  Serial.println("Server Avviato!");
-  //Setup Pin
-  pinMode(buzzer, OUTPUT);
-  pinMode(laser, OUTPUT);
-  pinMode(LED_BUILTIN, OUTPUT);
-  //accensione del led di stato
-  digitalWrite(LED_BUILTIN, HIGH);
-  //accensione del laser
-  digitalWrite(laser, HIGH);
+  //setup server 
+  server.begin();
+
+  Serial.println("Server Avviato!"); //debug
+  //setup pin
+  pinMode(buzzer, OUTPUT); //setup pin buzzer
+  pinMode(laser, OUTPUT); //setup pin laser
+  digitalWrite(laser, HIGH); //accenzione laser
+  ///suono di accensione
+  digitalWrite(buzzer, HIGH); 
+  delay(1000);
+  digitalWrite(buzzer, LOW);
 }
 
 void loop() {
-  //creazione variabile client
   EthernetClient client = server.available();
-
-  //legge i valori provenienti dal fotoresitore
   int lettura = analogRead(A0);
-  //se viene riscontrato un client
-  if(client){
-    //se ce comunicazione con il client
-    if (client.available() > 0){
-      Serial.println("Client connesso!");
-      char ch = client.read();
-      String str = String(ch);
-      Serial.print("Il client ha inviato");
-      Serial.println(str); //debug
-      if (ch == 'a'){
-        //attivo il laser
-        digitalWrite(laser, HIGH);
-        digitalWrite(ledDiStato, HIGH);
+  if(stato== 1){ //se allarme acceso
+    digitalWrite(laser, HIGH); 
+  }
+  else if(stato == 0){//se allarme spento
+    digitalWrite(laser, LOW);
+  }
+
+  if(client){ //se il client esiste
+    if (client.available() > 0){ //se client connesso
+      Serial.println("Client connesso!"); //debug
+      char ch = client.read(); //lettura valore inviato dal client
+      String str = String(ch); //conversione valore inviato in stringa
+      Serial.println("il valore inviato è: " + ch); //debug
+      if (str == "1"){
+        //attivo il laser e cassa
         stato = 1;
+        Serial.println("Attivato"); //debug
       }
-      else if (ch == 'd'){
-        //disattivo il laser
+      else if (str == "2"){
+        //disattivo il laser e la cassa
         stato = 0;
-        digitalWrite(laser, LOW);
-        // digitalWrite(ledDiStato, LOW);
+        Serial.println("Disattivato");
       }
       else
       {
-        Serial.println("Nessun input inviato corrisponde ad un'azione");
+        Serial.println("Nessun input inviato corrisponde a nessun'azione");
       }
     }
-    else{
-      Serial.println("Il client non risponde");
-    }
-  }
-  else{
-      Serial.println("Nessun client");
   }
   Serial.println(lettura); //debug
-  //se il laser non punta il fotoresistore e l'allarme è attivo
-  if(lettura < soglia && stato == 1){
-    allarme();
-  }
-
+  Serial.println(String(stato)); //debug
+  if(lettura < soglia){ //se il laser non punta la fotoresistenza
+    allarme(stato); //fai scattare l'allarme
+  }  
 }
