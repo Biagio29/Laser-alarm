@@ -11,7 +11,7 @@ int main(int argc, char const *argv[]){
 	const char* ip = "192.168.1.75";
 	int sock = 0, valread, client_fd;
 	struct sockaddr_in serv_addr;
-	char risposta = 's';
+	char risposta = 1;
 	char buffer[1024] = {0};
 	//controllo se la socket è stata creata correttamente
 	if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0){
@@ -41,7 +41,7 @@ int main(int argc, char const *argv[]){
 	int flag = 0;
 	while (!flag)
 	{
-		printf("Cosa vuoi fare? \nA-attiva l'allarme\nD-disattiva l'allarme:\ninserisci la tua risposta");
+		printf("Cosa vuoi fare? \n1-attiva l'allarme\n2-disattiva l'allarme:\ninserisci la tua risposta: ");
 		scanf("%c", &risposta);
 		send(sock, &risposta, strlen(&risposta), 0);
 		printf("Invio riuscito\n");
